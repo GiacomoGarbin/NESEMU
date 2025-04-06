@@ -2,12 +2,15 @@
 
 Bus::Bus()
 {
-    // clear RAM
+    // clear the RAM
 
     for (uint8_t& byte : mRAM)
     {
         byte = 0x00;
     }
+
+    // connect the CPU to this BUS
+    mCPU.ConnectBus(this);
 }
 
 Bus::~Bus()
