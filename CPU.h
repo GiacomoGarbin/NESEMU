@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 class Bus;
 
@@ -33,6 +35,42 @@ public:
 
     void ConnectBus(Bus* pBus);
 
+    // addressing modes (12)
+
+    uint8_t ABS(); // absolute value
+    uint8_t ABX();
+    uint8_t ABY();
+    uint8_t IMM(); // immediate data source
+    uint8_t IMP(); // imply data source
+    uint8_t IND();
+    uint8_t IZX();
+    uint8_t IZY();
+    uint8_t REL();
+    uint8_t ZP0();
+    uint8_t ZPX();
+    uint8_t ZPY();
+
+    // opcodes (56)
+
+    // TODO: declare opcode methods
+
+    uint8_t XXX(); // illegal opcode fallback
+
+    // signals
+
+    void Clock();
+    void Reset();
+    void IRQ();   // interrupt request
+    void NMI();   // non-maskable interrupt request
+
+    uint8_t Fetch();
+    uint8_t mFetch;
+
+    uint16_t mAddrABS; // absolute address
+    uint16_t mAddrREL; // relative address
+    uint8_t  mOpcode;  // current opcode
+    uint8_t  mCycles;  // number of cycles left for the duration of the current instruction
+
 private:
     Bus* mBus;
 
@@ -43,4 +81,14 @@ private:
     // methods to access the status register
     uint8_t GetFlag(FLAGS flag);
     void SetFlag(FLAGS flag, bool enable);
+
+    struct Instruction
+    {
+        std::string name;
+        uint8_t (CPU::* operate)(void) = nullptr;
+        uint8_t (CPU::* addrmode)(void) = nullptr;
+        uint8_t cycles = 0;
+    };
+
+    std::vector<Instruction> mLookup;
 };

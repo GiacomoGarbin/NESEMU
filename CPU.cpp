@@ -10,8 +10,16 @@ CPU::CPU()
     , mSP(0x00)
     , mPC(0x0000)
     , mSR(0x00)
+    , mFetch(0x00)
+    , mAddrABS(0x0000)
+    , mAddrREL(0x0000)
+    , mOpcode(0x00)
+    , mCycles(0x00)
 {
-
+    mLookup =
+    {
+        // TODO: initialize instruction lookup table
+    };
 }
 
 CPU::~CPU()
