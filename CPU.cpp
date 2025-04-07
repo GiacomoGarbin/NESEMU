@@ -58,3 +58,22 @@ void CPU::SetFlag(FLAGS flag, bool enable)
         mSR &= ~flag;
     }
 }
+
+void CPU::Clock()
+{
+    if (mCycles == 0)
+    {
+        mOpcode = Read(mPC);
+        mPC++;
+
+        // get starting number of cycles
+        mCycles = mLookup[mOpcode].cycles;
+
+        uint8_t additional_cycle_1 = (this->*mLookup[mOpcode].addrmode)();
+        uint8_t additional_cycle_2 = (this->*mLookup[mOpcode].operate)();
+
+        mCycles += (additional_cycle_1 & additional_cycle_2);
+    }
+
+    mCycles--;
+}
