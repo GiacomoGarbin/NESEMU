@@ -54,12 +54,29 @@ public:
 
     // TODO: declare opcode methods
 
+    uint8_t AND(); // bitwise logic AND between the accumulator register and the fetched data
+    uint8_t BCS(); // branch if the carry bit is set
+    uint8_t BCC(); // branch if the carry bit is clear
+    uint8_t BEQ(); // branch if equal
+    uint8_t BMI(); // branch if minus (i.e. negative)
+    uint8_t BNE(); // branch if not equal
+    uint8_t BPL(); // branch if positive
+    uint8_t BVC(); // branch if overflow
+    uint8_t BVS(); // branch if not overflow
+    uint8_t CLC(); // clear the carry bit
+    uint8_t CLD(); // clear the decinal mode bit
+    uint8_t ADC(); // addition with carry bit
+    uint8_t SBC(); // subtraction with carry bit
+    uint8_t PHA(); // push the accumulator register to the stack
+    uint8_t PLA(); // pop a value from the stack and into the accumulator register
+    uint8_t RTI(); // return from interrupt
+
     uint8_t XXX(); // illegal opcode fallback
 
     // signals
 
     void Clock();
-    void Reset();
+    void Reset(); // configure the CPU to a known state
     void IRQ();   // interrupt request
     void NMI();   // non-maskable interrupt request
 
@@ -91,4 +108,13 @@ private:
     };
 
     std::vector<Instruction> mLookup;
+
+    // helpers
+
+    uint8_t BranchIf(const bool cond);
+    uint8_t AddValue(const uint16_t value);
+    void JumpAddrABS(const uint16_t addr);
+    void PushValue(const uint8_t value);
+    uint8_t PopValue();
+    void CallInterrupt(const uint16_t routine);
 };
