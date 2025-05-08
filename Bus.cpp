@@ -26,7 +26,7 @@ void Bus::Write(uint16_t addr, uint8_t data)
     }
 }
 
-uint8_t Bus::Read(uint16_t addr, bool bReadOnly = false)
+uint8_t Bus::Read(uint16_t addr, bool bReadOnly)
 {
     if ((0x0000 <= addr) && (addr <= 0xFFFF))
     {
