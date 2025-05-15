@@ -70,7 +70,7 @@ CPU::MapASM CPU::Disassemble(uint16_t begin, uint16_t end)
         // instruction address
         std::string inst = "$" + ToHex(addr, 4) + ": ";
 
-        uint8_t opcode = mBus->Read(addr, true);
+        uint8_t opcode = mBus->ReadCPU(addr, true);
         addr++;
 
         inst += mLookup[opcode].name + " ";
@@ -81,16 +81,16 @@ CPU::MapASM CPU::Disassemble(uint16_t begin, uint16_t end)
         }
         else if (mLookup[opcode].addrmode == &CPU::IMM)
 		{
-            uint8_t value = mBus->Read(addr, true);
+            uint8_t value = mBus->ReadCPU(addr, true);
             addr++;
             
             inst += "#$" + ToHex(value, 2) + " {IMM}";
 		}
         else if (mLookup[opcode].addrmode == &CPU::ABS)
 		{
-			uint8_t lo = mBus->Read(addr, true);
+			uint8_t lo = mBus->ReadCPU(addr, true);
             addr++;
-			uint8_t hi = mBus->Read(addr, true);
+			uint8_t hi = mBus->ReadCPU(addr, true);
             addr++;
 
             uint16_t value = (uint16_t(hi << 8) | uint16_t(lo));
@@ -98,10 +98,10 @@ CPU::MapASM CPU::Disassemble(uint16_t begin, uint16_t end)
 		}
         else if (mLookup[opcode].addrmode == &CPU::REL)
 		{
-            uint8_t value = mBus->Read(addr, true);
+            uint8_t value = mBus->ReadCPU(addr, true);
             addr++;
 
-            inst += "$" + ToHex(value, 2) + " [$" + ToHex(addr + value, 4) + "] {REL}";
+            inst += "$" + ToHex(value, 2) + " [$" + ToHex(addr + int8_t(value), 4) + "] {REL}";
 		}
         // TODO: fill all address modes
 
@@ -125,12 +125,12 @@ std::string CPU::ToHex(uint32_t value, uint8_t digits)
 
 void CPU::Write(uint16_t addr, uint8_t data)
 {
-    mBus->Write(addr, data);
+    mBus->WriteCPU(addr, data);
 }
 
 uint8_t CPU::Read(uint16_t addr)
 {
-    return mBus->Read(addr, false);
+    return mBus->ReadCPU(addr, false);
 }
 
 uint8_t CPU::GetFlag(FLAGS flag) const

@@ -4,6 +4,7 @@
 #include "PGE/olcPixelGameEngine.h"
 
 #include <cstdint>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -11,51 +12,19 @@ class Demo : public olc::PixelGameEngine
 {
 public:
     Demo()
+        : mIsEmulationRunning(false), mResidualTime(0.0f)
     {
-        sAppName = "Demo";
+        sAppName = "Demo2";
     }
 
     bool OnUserCreate() override
     {
-        // *=$8000
-        // LDX #10
-        // STX $0000
-        // LDX #3
-        // STX $0001
-        // LDY $0000
-        // LDA #0
-        // CLC
-        // loop
-        // ADC $0001
-        // DEY
-        // BNE loop
-        // STA $0002
-        // NOP
-        // NOP
-        // NOP
+        mCartridge = std::make_shared<Cartridge>("nestest.nes");
 
-        // https://www.masswerk.at/6502/assembler.html
-
-        // convert hex string into bytes
-
-        std::stringstream ss;
-        ss << "A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA";
-        uint16_t offset = 0x8000;
-
-        while (!ss.eof())
-        {
-            std::string byte;
-            ss >> byte;
-            mNES.mCPURAM[offset++] = uint8_t(std::stoul(byte, nullptr, 16));
-        }
-
-        // set reset vector
-        mNES.mCPURAM[0xFFFC] = 0x00;
-        mNES.mCPURAM[0xFFFD] = 0x80;
+        mNES.InsertCartridge(mCartridge);
 
         mMapASM = mNES.mCPU.Disassemble(0x0000, 0xFFFF);
 
-        // reset
         mNES.mCPU.Reset();
 
         return true;
@@ -65,13 +34,54 @@ public:
     {
         Clear(olc::DARK_BLUE);
 
-        if (GetKey(olc::Key::SPACE).bPressed)
+        if (mIsEmulationRunning)
         {
-            do
+            if (mResidualTime > 0.0f)
             {
-                mNES.mCPU.Clock();
+                mResidualTime -= fElapsedTime;
             }
-            while (!mNES.mCPU.IsComplete());
+            else
+            {
+                mResidualTime += (1.0f / 60.0f) - fElapsedTime;
+                
+                do
+                {
+                    mNES.Clock();
+                } while (mNES.mPPU.mIsFrameComplete == false);
+
+                mNES.mPPU.mIsFrameComplete = false;
+            }
+        }
+        else
+        {
+
+            if (GetKey(olc::Key::C).bPressed)
+            {
+                do
+                {
+                    mNES.Clock();
+                } while (mNES.mCPU.IsComplete() == false);
+
+                do
+                {
+                    mNES.Clock();
+                } while (mNES.mCPU.IsComplete() == true);
+            }
+
+            if (GetKey(olc::Key::F).bPressed)
+            {
+                do
+                {
+                    mNES.Clock();
+                } while (mNES.mPPU.mIsFrameComplete == false);
+
+                do
+                {
+                    mNES.Clock();
+                } while (mNES.mCPU.IsComplete() == false);
+
+                mNES.mPPU.mIsFrameComplete = false;
+            }
         }
 
         if (GetKey(olc::Key::R).bPressed)
@@ -79,22 +89,15 @@ public:
             mNES.mCPU.Reset();
         }
 
-        if (GetKey(olc::Key::I).bPressed)
+        if (GetKey(olc::Key::SPACE).bPressed)
         {
-            mNES.mCPU.IRQ();
+            mIsEmulationRunning = !mIsEmulationRunning;
         }
 
-        if (GetKey(olc::Key::N).bPressed)
-        {
-            mNES.mCPU.NMI();
-        }
+        DrawCPU(516, 2);
+        DrawCode(516, 72, 26);
 
-        DrawRAM(2,   2, 0x0000, 16, 16);
-        DrawRAM(2, 182, 0x8000, 16, 16);
-        DrawCPU(448, 2);
-        DrawCode(448, 72, 26);
-
-        DrawString(10, 370, "SPACE = Step Instruction | R = Reset | I = IRQ | N = NMI");
+        DrawSprite(0, 0, &mNES.mPPU.GetScreen(), 2);
 
         return true;
     }
@@ -114,7 +117,7 @@ private:
             y += 10;
         }
     }
-    
+
     void DrawCPU(int x, int y)
     {
         auto IsFlagSet = [&](CPU::FLAGS flag)
@@ -123,9 +126,9 @@ private:
         };
 
         DrawString(x, y, "STATUS:");
-        DrawString(x +  64, y, "N", IsFlagSet(CPU::FLAGS::N));
-        DrawString(x +  80, y, "O", IsFlagSet(CPU::FLAGS::O));
-        DrawString(x +  96, y, "-", IsFlagSet(CPU::FLAGS::U));
+        DrawString(x + 64, y, "N", IsFlagSet(CPU::FLAGS::N));
+        DrawString(x + 80, y, "O", IsFlagSet(CPU::FLAGS::O));
+        DrawString(x + 96, y, "-", IsFlagSet(CPU::FLAGS::U));
         DrawString(x + 112, y, "B", IsFlagSet(CPU::FLAGS::B));
         DrawString(x + 128, y, "D", IsFlagSet(CPU::FLAGS::D));
         DrawString(x + 144, y, "I", IsFlagSet(CPU::FLAGS::I));
@@ -138,7 +141,7 @@ private:
         DrawString(x, y + 40, "Y: $" + CPU::ToHex(mNES.mCPU.mY, 2) + " [" + std::to_string(mNES.mCPU.mY) + "]");
         DrawString(x, y + 50, "SP: $" + CPU::ToHex(mNES.mCPU.mSP, 4));
     }
-    
+
     void DrawCode(int x, int y, int lines)
     {
         auto i = mMapASM.find(mNES.mCPU.mPC);
@@ -177,8 +180,12 @@ private:
     }
 
     Bus mNES;
+    std::shared_ptr<Cartridge> mCartridge;
 
     CPU::MapASM mMapASM;
+
+    bool mIsEmulationRunning;
+    float mResidualTime;
 };
 
 int main()
