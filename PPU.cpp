@@ -164,7 +164,7 @@ uint8_t PPU::ReadCPU(uint16_t addr, bool bReadOnly)
         {
             data = mDataBufferPPU;
         }
-        mAddressPPU++;
+        mAddressPPU += mControl.increment_mode ? 32 : 1;
         break;
     }
 
