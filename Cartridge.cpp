@@ -3,7 +3,7 @@
 #include <fstream>
 
 Cartridge::Cartridge(const std::string &filename)
-    : mMapperID(0), mBanksPRG(0), mBanksCHR(0)
+    : mMirror(MIRRORING::HORIZONTAL), mMapperID(0), mBanksPRG(0), mBanksCHR(0)
 {
     // https://www.nesdev.org/wiki/INES
 
@@ -46,6 +46,7 @@ Cartridge::Cartridge(const std::string &filename)
         }
 
         mMapperID = (header.mapper_2 & 0xF0) | (header.mapper_1 >> 4);
+        mMirror = (header.mapper_1 & 0x01) ? MIRRORING::VERTICAL : MIRRORING::HORIZONTAL;
 
         uint8_t file_type = 1;
 

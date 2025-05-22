@@ -45,7 +45,7 @@ uint8_t Bus::ReadCPU(uint16_t addr, bool bReadOnly)
     }
     else if ((0x2000 <= addr) && (addr <= 0x3FFF))
     {
-        return mPPU.ReadPPU(addr & 0x0007, bReadOnly);
+        return mPPU.ReadCPU(addr & 0x0007, bReadOnly);
     }
 
     return data;
@@ -70,6 +70,12 @@ void Bus::Clock()
     if ((mSystemClockCounter % 3) == 0)
     {
         mCPU.Clock();
+    }
+
+    if (mPPU.mNMI)
+    {
+        mPPU.mNMI = false;
+        mCPU.NMI();
     }
 
     mSystemClockCounter++;

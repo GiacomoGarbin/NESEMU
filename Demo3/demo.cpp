@@ -12,14 +12,14 @@ class Demo : public olc::PixelGameEngine
 {
 public:
     Demo()
-        : mIsEmulationRunning(false), mResidualTime(0.0f)
+        : mIsEmulationRunning(false), mResidualTime(0.0f), mSelectedPalette(0)
     {
-        sAppName = "Demo2";
+        sAppName = "Demo3";
     }
 
     bool OnUserCreate() override
     {
-        mCartridge = std::make_shared<Cartridge>("../ROMS/nestest.nes");
+        mCartridge = std::make_shared<Cartridge>("../ROMS/donkey kong.nes");
 
         mNES.InsertCartridge(mCartridge);
 
@@ -43,7 +43,7 @@ public:
             else
             {
                 mResidualTime += (1.0f / 60.0f) - fElapsedTime;
-                
+
                 do
                 {
                     mNES.Clock();
@@ -94,10 +94,45 @@ public:
             mIsEmulationRunning = !mIsEmulationRunning;
         }
 
+        if (GetKey(olc::Key::P).bPressed)
+        {
+            (++mSelectedPalette) &= 0x07;
+        }
+
         DrawCPU(516, 2);
         DrawCode(516, 72, 26);
 
+        const int swatch_size = 6;
+
+        // for each palette
+        for (int p = 0; p < 8; ++p)
+        {
+            // for each index
+            for (int i = 0; i < 4; ++i)
+            {
+                FillRect(516 + p * (swatch_size * 5) + i * swatch_size, 340, swatch_size, swatch_size, mNES.mPPU.GetColourFromPaletteRAM(p, i));
+            }
+        }
+
+        DrawRect(516 + mSelectedPalette * (swatch_size * 5) - 1, 339, swatch_size * 4, swatch_size, olc::WHITE);
+
+        olc::Sprite& pattern_table_0 = mNES.mPPU.GetPatternTable(0, mSelectedPalette);
+        olc::Sprite& pattern_table_1 = mNES.mPPU.GetPatternTable(1, mSelectedPalette);
+
+        DrawSprite(516, 348, &pattern_table_0);
+        DrawSprite(648, 348, &pattern_table_1);
+
         DrawSprite(0, 0, &mNES.mPPU.GetScreen(), 2);
+
+        for (uint8_t y = 0; y < 30; ++y)
+        {
+            for (uint8_t x = 0; x < 32; ++x)
+            {
+                uint8_t id = mNES.mPPU.mNameTable[0][y * 32 + x];
+                // DrawString(x*16, y*16, CPU::ToHex(id, 2));
+                DrawPartialSprite(x * 16, y * 16, &pattern_table_1, (id & 0x0F) << 3, ((id >> 4) & 0x0F) << 3, 8, 8, 2);
+            }
+        }
 
         return true;
     }
@@ -186,13 +221,15 @@ private:
 
     bool mIsEmulationRunning;
     float mResidualTime;
+
+    uint8_t mSelectedPalette;
 };
 
 int main()
 {
     Demo demo;
 
-    if (demo.Construct(680, 480, 2, 2))
+    if (demo.Construct(780, 480, 2, 2))
     {
         demo.Start();
     }

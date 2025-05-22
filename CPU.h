@@ -27,19 +27,19 @@ public:
 
     // registers
 
-    uint8_t  mA;  // A register
-    uint8_t  mX;  // X register
-    uint8_t  mY;  // Y register
-    uint8_t  mSP; // stack pointer
+    uint8_t mA;   // A register
+    uint8_t mX;   // X register
+    uint8_t mY;   // Y register
+    uint8_t mSP;  // stack pointer
     uint16_t mPC; // program counter
-    uint8_t  mSR; // status register
+    uint8_t mSR;  // status register
 
-    void ConnectBus(Bus* pBus);
+    void ConnectBus(Bus *pBus);
 
     bool IsFlagSet(FLAGS flag) const;
     bool IsComplete() const;
 
-    using MapASM = std::map<uint16_t,std::string>;
+    using MapASM = std::map<uint16_t, std::string>;
     MapASM Disassemble(uint16_t begin, uint16_t end);
 
     static std::string ToHex(uint32_t value, uint8_t digits);
@@ -63,60 +63,60 @@ public:
 
     uint8_t ADC(); // addition with carry bit
     uint8_t AND(); // bitwise logic AND between the accumulator register and the fetched data
-    uint8_t ASL();
+    uint8_t ASL(); // arithmetic shift left: C <- [76543210] <- 0
     uint8_t BCC(); // branch if the carry bit is clear
     uint8_t BCS(); // branch if the carry bit is set
     uint8_t BEQ(); // branch if equal
-    uint8_t BIT();
+    uint8_t BIT(); // bit test: A & memory
     uint8_t BMI(); // branch if minus (i.e. negative)
     uint8_t BNE(); // branch if not equal
     uint8_t BPL(); // branch if positive
-    uint8_t BRK();
+    uint8_t BRK(); // break (software IRQ)
     uint8_t BVC(); // branch if overflow
     uint8_t BVS(); // branch if not overflow
     uint8_t CLC(); // clear the carry bit
     uint8_t CLD(); // clear the decinal mode bit
     uint8_t CLI();
     uint8_t CLV();
-    uint8_t CMP();
-    uint8_t CPX();
-    uint8_t CPY();
-    uint8_t DEC();
-    uint8_t DEX();
-    uint8_t DEY();
-    uint8_t EOR();
-    uint8_t INC();
-    uint8_t INX();
-    uint8_t INY();
-    uint8_t JMP();
-    uint8_t JSR();
-    uint8_t LDA();
-    uint8_t LDX();
-    uint8_t LDY();
-    uint8_t LSR();
+    uint8_t CMP(); // compare the accumulator register
+    uint8_t CPX(); // compare the X register
+    uint8_t CPY(); // compare the Y register
+    uint8_t DEC(); // decrement value at memory location
+    uint8_t DEX(); // decrement the X register
+    uint8_t DEY(); // decrement the Y register
+    uint8_t EOR(); // bitwise XOR: A = A ^ memory
+    uint8_t INC(); // increment value at memory location
+    uint8_t INX(); // increment the X register
+    uint8_t INY(); // increment the Y register
+    uint8_t JMP(); // jump to memory location
+    uint8_t JSR(); // jump to subroutine
+    uint8_t LDA(); // load the accumulator register
+    uint8_t LDX(); // load the X register
+    uint8_t LDY(); // load the Y register
+    uint8_t LSR(); // logical shift right: 0 -> [76543210] -> C
     uint8_t NOP();
-    uint8_t ORA();
+    uint8_t ORA(); // bitwise OR: A = A | memory
     uint8_t PHA(); // push the accumulator register to the stack
-    uint8_t PHP();
+    uint8_t PHP(); // push the status register to the stack
     uint8_t PLA(); // pop a value from the stack and into the accumulator register
-    uint8_t PLP();
-    uint8_t ROL();
-    uint8_t ROR();
+    uint8_t PLP(); // pop a value from the stack and into the status register
+    uint8_t ROL(); // rotate left: C <- [76543210] <- C
+    uint8_t ROR(); // rotate right: C -> [76543210] -> C
     uint8_t RTI(); // return from interrupt
-    uint8_t RTS();
+    uint8_t RTS(); // return from subroutine
     uint8_t SBC(); // subtraction with carry bit
-    uint8_t SEC();
+    uint8_t SEC(); // set carry flag
     uint8_t SED();
-    uint8_t SEI();
+    uint8_t SEI(); // set interrupt flag
     uint8_t STA();
-    uint8_t STX();
-    uint8_t STY();
-    uint8_t TAX();
-    uint8_t TAY();
+    uint8_t STX(); // store the X register in memory
+    uint8_t STY(); // store the Y register in memory
+    uint8_t TAX(); // transfer the accumulator register to the X register
+    uint8_t TAY(); // transfer the accumulator register to the Y register
     uint8_t TSX();
-    uint8_t TXA();
-    uint8_t TXS();
-    uint8_t TYA();
+    uint8_t TXA(); // transfer the X register to the accumulator register
+    uint8_t TXS(); // transfer the X register to the stack pointer
+    uint8_t TYA(); // transfer the Y register to the accumulator register
 
     uint8_t XXX(); // illegal opcode fallback
 
@@ -132,11 +132,11 @@ public:
 
     uint16_t mAddrABS; // absolute address
     uint16_t mAddrREL; // relative address
-    uint8_t  mOpcode;  // current opcode
-    uint8_t  mCycles;  // number of cycles left for the duration of the current instruction
+    uint8_t mOpcode;   // current opcode
+    uint8_t mCycles;   // number of cycles left for the duration of the current instruction
 
 private:
-    Bus* mBus;
+    Bus *mBus;
 
     // methods to access the BUS
     void Write(uint16_t addr, uint8_t data);
@@ -149,8 +149,8 @@ private:
     struct Instruction
     {
         std::string name;
-        uint8_t (CPU::* operate)(void) = nullptr;
-        uint8_t (CPU::* addrmode)(void) = nullptr;
+        uint8_t (CPU::*operate)(void) = nullptr;
+        uint8_t (CPU::*addrmode)(void) = nullptr;
         uint8_t cycles = 0;
     };
 

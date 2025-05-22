@@ -20,6 +20,14 @@ public:
     bool WritePPU(uint16_t addr, uint8_t data);
     bool ReadPPU(uint16_t addr, uint8_t &data);
 
+    enum MIRRORING
+    {
+        VERTICAL,
+        HORIZONTAL,
+    };
+
+    MIRRORING mMirror;
+
 private:
     // memory
     std::vector<uint8_t> mPRG;

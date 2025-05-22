@@ -1,7 +1,7 @@
 #include "PPU.h"
 
 PPU::PPU()
-    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mScanline(0), mCycle(0)
+    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mNMI(false), mScanline(0), mCycle(0), mAddressLatch(0), mDataBufferPPU(0), mAddressPPU(0)
 {
     // https://www.nesdev.org/wiki/PPU_palettes#2C02
 
@@ -83,20 +83,41 @@ void PPU::WriteCPU(uint16_t addr, uint8_t data)
     switch (addr)
     {
     case 0x0000: // control
+        mControl.reg = data;
         break;
+
     case 0x0001: // mask
+        mMask.reg = data;
         break;
+
     case 0x0002: // status
         break;
+
     case 0x0003: // OAM addr
         break;
+
     case 0x0004: // OAM data
         break;
+
     case 0x0005: // scroll
         break;
+
     case 0x0006: // PPU addr
+        if (mAddressLatch == 0)
+        {
+            mAddressPPU = (mAddressPPU & 0x00FF) | (data << 8);
+            mAddressLatch = 1;
+        }
+        else
+        {
+            mAddressPPU = (mAddressPPU & 0xFF00) | data;
+            mAddressLatch = 0;
+        }
         break;
+
     case 0x0007: // PPU data
+        WritePPU(mAddressPPU, data);
+        mAddressPPU += mControl.increment_mode ? 32 : 1;
         break;
     }
 }
@@ -109,19 +130,41 @@ uint8_t PPU::ReadCPU(uint16_t addr, bool bReadOnly)
     {
     case 0x0000: // control
         break;
+
     case 0x0001: // mask
         break;
+
     case 0x0002: // status
+        // we are only interested in the top 3 bits, the unused bits tend to be
+        // filled with noise or what was last on the internal data buffer
+        data = (mStatus.reg & 0xE0) | (mDataBufferPPU & 0x1F);
+        // reading the status register has some side effects:
+        mStatus.vertical_blank = 0;
+        mAddressLatch = 0;
         break;
+
     case 0x0003: // OAM addr
         break;
+
     case 0x0004: // OAM data
         break;
+
     case 0x0005: // scroll
         break;
+
     case 0x0006: // PPU addr
         break;
+
     case 0x0007: // PPU data
+        // delayed read for almost all of the PPU address range
+        data = mDataBufferPPU;
+        mDataBufferPPU = ReadPPU(mAddressPPU);
+        // expect for where out palettes reside
+        if (mAddressPPU > 0x3F00)
+        {
+            data = mDataBufferPPU;
+        }
+        mAddressPPU++;
         break;
     }
 
@@ -133,14 +176,124 @@ void PPU::WritePPU(uint16_t addr, uint8_t data)
     if (mCartridge->WritePPU(addr, data))
     {
     }
+    else if ((0x0000 <= addr) && (addr <= 0x1FFF))
+    {
+        // pattern memory
+
+        mPatterns[(addr & 0x1000) >> 12][addr & 0x0FFF] = data;
+    }
+    else if ((0x2000 <= addr) && (addr <= 0x3EFF))
+    {
+        // name table
+
+        addr &= 0x0FFF;
+
+        switch (mCartridge->mMirror)
+        {
+        case Cartridge::MIRRORING::VERTICAL:
+            if (((0x0000 <= addr) && (addr <= 0x03FF)) || ((0x0800 <= addr) && (addr <= 0x0BFF)))
+            {
+                mNameTable[0][addr & 0x03FF] = data;
+            }
+            if (((0x0400 <= addr) && (addr <= 0x07FF)) || ((0x0C00 <= addr) && (addr <= 0x0FFF)))
+            {
+                mNameTable[1][addr & 0x03FF] = data;
+            }
+            break;
+
+        case Cartridge::MIRRORING::HORIZONTAL:
+            if (((0x0000 <= addr) && (addr <= 0x03FF)) || ((0x0400 <= addr) && (addr <= 0x07FF)))
+            {
+                mNameTable[0][addr & 0x03FF] = data;
+            }
+            if (((0x0800 <= addr) && (addr <= 0x0BFF)) || ((0x0C00 <= addr) && (addr <= 0x0FFF)))
+            {
+                mNameTable[1][addr & 0x03FF] = data;
+            }
+            break;
+        }
+    }
+    else if ((0x3F00 <= addr) && (addr <= 0x3FFF))
+    {
+        // palette memory
+
+        addr &= 0x001F;
+
+        // mirroring
+        if (addr == 0x0010)
+            addr = 0x0000;
+        if (addr == 0x0014)
+            addr = 0x0004;
+        if (addr == 0x0018)
+            addr = 0x0008;
+        if (addr == 0x001C)
+            addr = 0x000C;
+
+        mPalettes[addr] = data;
+    }
 }
 
-uint8_t PPU::ReadPPU(uint16_t addr, bool bReadOnly)
+uint8_t PPU::ReadPPU(uint16_t addr, bool bReadOnly) const
 {
     uint8_t data = 0;
 
     if (mCartridge->ReadPPU(addr, data))
     {
+    }
+    else if ((0x0000 <= addr) && (addr <= 0x1FFF))
+    {
+        // pattern memory
+
+        data = mPatterns[(addr & 0x1000) >> 12][addr & 0x0FFF];
+    }
+    else if ((0x2000 <= addr) && (addr <= 0x3EFF))
+    {
+        // name table
+
+        addr &= 0x0FFF;
+
+        switch (mCartridge->mMirror)
+        {
+        case Cartridge::MIRRORING::VERTICAL:
+            if (((0x0000 <= addr) && (addr <= 0x03FF)) || ((0x0800 <= addr) && (addr <= 0x0BFF)))
+            {
+                data = mNameTable[0][addr & 0x03FF];
+            }
+            if (((0x0400 <= addr) && (addr <= 0x07FF)) || ((0x0C00 <= addr) && (addr <= 0x0FFF)))
+            {
+                data = mNameTable[1][addr & 0x03FF];
+            }
+            break;
+
+        case Cartridge::MIRRORING::HORIZONTAL:
+            if (((0x0000 <= addr) && (addr <= 0x03FF)) || ((0x0400 <= addr) && (addr <= 0x07FF)))
+            {
+                data = mNameTable[0][addr & 0x03FF];
+            }
+            if (((0x0800 <= addr) && (addr <= 0x0BFF)) || ((0x0C00 <= addr) && (addr <= 0x0FFF)))
+            {
+                data = mNameTable[1][addr & 0x03FF];
+            }
+            break;
+        }
+    }
+    else if ((0x3F00 <= addr) && (addr <= 0x3FFF))
+    {
+        // palette memory
+
+        addr &= 0x001F;
+
+        // mirroring
+        if (addr == 0x0010)
+            addr = 0x0000;
+        if (addr == 0x0014)
+            addr = 0x0004;
+        if (addr == 0x0018)
+            addr = 0x0008;
+        if (addr == 0x001C)
+            addr = 0x000C;
+
+        data = mPalettes[addr];
     }
 
     return data;
@@ -153,7 +306,23 @@ void PPU::ConnectCartridge(const std::shared_ptr<Cartridge> &cartridge)
 
 void PPU::Clock()
 {
-    mSpriteScreen.SetPixel(mCycle - 1, mScanline, mPaletteScreen[(rand() % 2) ? 0x3F : 0x30]);
+    if ((mScanline == -1) && (mCycle == 1))
+    {
+        mStatus.vertical_blank = 0;
+    }
+
+    if ((mScanline == 241) && (mCycle == 1))
+    {
+        mStatus.vertical_blank = 1;
+
+        if (mControl.enable_nmi)
+        {
+            mNMI = true;
+        }
+    }
+
+    // // temporary noise
+    // mSpriteScreen.SetPixel(mCycle - 1, mScanline, mPaletteScreen[(rand() % 2) ? 0x3F : 0x30]);
 
     mCycle++;
 
@@ -168,4 +337,46 @@ void PPU::Clock()
             mIsFrameComplete = true;
         }
     }
+}
+
+olc::Sprite &PPU::GetPatternTable(uint8_t i, uint8_t palette)
+{
+    // for each pattern table, there are 16x16 tiles
+
+    for (uint16_t y = 0; y < 16; ++y)
+    {
+        for (uint16_t x = 0; x < 16; ++x)
+        {
+            // each tile is 8x8 pixels, each pixel is 2 bits
+            // therefore each tile is 16 bytes
+            uint16_t offset = y * 256 + x * 16;
+
+            for (uint16_t row = 0; row < 8; ++row)
+            {
+                // each pattern table is 4 KB
+                // each tile row is 1 byte
+                uint8_t tile_lsb = ReadPPU(i * 0x1000 + offset + row + 0);
+                uint8_t tile_msb = ReadPPU(i * 0x1000 + offset + row + 8);
+
+                for (uint16_t col = 0; col < 8; ++col)
+                {
+                    uint8_t pixel = (tile_lsb & 0x01) + (tile_msb & 0x01);
+
+                    mSpritePatternTable[i].SetPixel(x * 8 + (7 - col),
+                                                    y * 8 + row,
+                                                    GetColourFromPaletteRAM(palette, pixel));
+
+                    tile_lsb >>= 1;
+                    tile_msb >>= 1;
+                }
+            }
+        }
+    }
+
+    return mSpritePatternTable[i];
+}
+
+const olc::Pixel &PPU::GetColourFromPaletteRAM(uint8_t palette, uint8_t pixel) const
+{
+    return mPaletteScreen[ReadPPU(0x3F00 + (palette * 4) + pixel)];
 }
