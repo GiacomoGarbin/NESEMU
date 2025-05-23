@@ -101,5 +101,33 @@ private:
 
     uint8_t mAddressLatch; // are we writing to the low or high byte?
     uint8_t mDataBufferPPU;
-    uint16_t mAddressPPU;
+
+    union LoopyRegister
+    {
+        struct
+        {
+            uint16_t coarse_x : 5;
+            uint16_t coarse_y : 5;
+            uint16_t nametable_x : 1;
+            uint16_t nametable_y : 1;
+            uint16_t fine_y : 5;
+            uint16_t unused_x : 1;
+        };
+        uint16_t reg;
+    };
+
+    LoopyRegister mVramAddr;
+    LoopyRegister mTramAddr;
+
+    uint8_t mFineX;
+
+    uint8_t mBackgroundNextTileID;
+    uint8_t mBackgroundNextTileAttrib;
+    uint8_t mBackgroundNextTileLSB;
+    uint8_t mBackgroundNextTileMSB;
+
+    uint16_t mBackgroundShifterPatternLo;
+    uint16_t mBackgroundShifterPatternHi;
+    uint16_t mBackgroundShifterAttribLo;
+    uint16_t mBackgroundShifterAttribHi;
 };

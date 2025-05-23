@@ -124,15 +124,15 @@ public:
 
         DrawSprite(0, 0, &mNES.mPPU.GetScreen(), 2);
 
-        for (uint8_t y = 0; y < 30; ++y)
-        {
-            for (uint8_t x = 0; x < 32; ++x)
-            {
-                uint8_t id = mNES.mPPU.mNameTable[0][y * 32 + x];
-                // DrawString(x*16, y*16, CPU::ToHex(id, 2));
-                DrawPartialSprite(x * 16, y * 16, &pattern_table_1, (id & 0x0F) << 3, ((id >> 4) & 0x0F) << 3, 8, 8, 2);
-            }
-        }
+        // for (uint8_t y = 0; y < 30; ++y)
+        // {
+        //     for (uint8_t x = 0; x < 32; ++x)
+        //     {
+        //         uint8_t id = mNES.mPPU.mNameTable[0][y * 32 + x];
+        //         // DrawString(x*16, y*16, CPU::ToHex(id, 2));
+        //         DrawPartialSprite(x * 16, y * 16, &pattern_table_1, (id & 0x0F) << 3, ((id >> 4) & 0x0F) << 3, 8, 8, 2);
+        //     }
+        // }
 
         return true;
     }

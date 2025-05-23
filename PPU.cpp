@@ -1,7 +1,7 @@
 #include "PPU.h"
 
 PPU::PPU()
-    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mNMI(false), mScanline(0), mCycle(0), mAddressLatch(0), mDataBufferPPU(0), mAddressPPU(0)
+    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mNMI(false), mScanline(0), mCycle(0), mAddressLatch(0), mDataBufferPPU(0), mVramAddr{.reg = 0}, mTramAddr{.reg = 0}, mFineX(0), mBackgroundNextTileID(0), mBackgroundNextTileAttrib(0), mBackgroundNextTileLSB(0), mBackgroundNextTileMSB(0), mBackgroundShifterPatternLo(0), mBackgroundShifterPatternHi(0), mBackgroundShifterAttribLo(0), mBackgroundShifterAttribHi(0)
 {
     // https://www.nesdev.org/wiki/PPU_palettes#2C02
 
@@ -84,6 +84,8 @@ void PPU::WriteCPU(uint16_t addr, uint8_t data)
     {
     case 0x0000: // control
         mControl.reg = data;
+        mTramAddr.nametable_x = mControl.nametable_x;
+        mTramAddr.nametable_y = mControl.nametable_y;
         break;
 
     case 0x0001: // mask
@@ -100,24 +102,38 @@ void PPU::WriteCPU(uint16_t addr, uint8_t data)
         break;
 
     case 0x0005: // scroll
+        if (mAddressLatch == 0)
+        {
+            mFineX = data & 0x07;
+            mTramAddr.coarse_x = data >> 3;
+            mAddressLatch = 1;
+        }
+        else
+        {
+            mTramAddr.fine_y = data & 0x07;
+            mTramAddr.coarse_y = data >> 3;
+            mAddressLatch = 0;
+        }
         break;
 
     case 0x0006: // PPU addr
         if (mAddressLatch == 0)
         {
-            mAddressPPU = (mAddressPPU & 0x00FF) | (data << 8);
+            // mTramAddr.reg = (mTramAddr.reg & 0x00FF) | (data << 8);
+            mTramAddr.reg = (uint16_t(data & 0x3F) << 8) | (mTramAddr.reg & 0x00FF);
             mAddressLatch = 1;
         }
         else
         {
-            mAddressPPU = (mAddressPPU & 0xFF00) | data;
+            mTramAddr.reg = (mTramAddr.reg & 0xFF00) | data;
+            mVramAddr = mTramAddr;
             mAddressLatch = 0;
         }
         break;
 
     case 0x0007: // PPU data
-        WritePPU(mAddressPPU, data);
-        mAddressPPU += mControl.increment_mode ? 32 : 1;
+        WritePPU(mVramAddr.reg, data);
+        mVramAddr.reg += mControl.increment_mode ? 32 : 1;
         break;
     }
 }
@@ -158,13 +174,13 @@ uint8_t PPU::ReadCPU(uint16_t addr, bool bReadOnly)
     case 0x0007: // PPU data
         // delayed read for almost all of the PPU address range
         data = mDataBufferPPU;
-        mDataBufferPPU = ReadPPU(mAddressPPU);
-        // expect for where out palettes reside
-        if (mAddressPPU > 0x3F00)
+        mDataBufferPPU = ReadPPU(mVramAddr.reg);
+        // expect for where our palettes reside
+        if (mVramAddr.reg >= 0x3F00)
         {
             data = mDataBufferPPU;
         }
-        mAddressPPU += mControl.increment_mode ? 32 : 1;
+        mVramAddr.reg += mControl.increment_mode ? 32 : 1;
         break;
     }
 
@@ -306,9 +322,163 @@ void PPU::ConnectCartridge(const std::shared_ptr<Cartridge> &cartridge)
 
 void PPU::Clock()
 {
-    if ((mScanline == -1) && (mCycle == 1))
+    auto IncrementScrollX = [&]()
     {
-        mStatus.vertical_blank = 0;
+        if (mMask.render_background || mMask.render_sprites)
+        {
+            if (mVramAddr.coarse_x == 31)
+            {
+                mVramAddr.coarse_x = 0;
+                mVramAddr.nametable_x = ~mVramAddr.nametable_x;
+            }
+            else
+            {
+                mVramAddr.coarse_x++;
+            }
+        }
+    };
+
+    auto IncrementScrollY = [&]()
+    {
+        if (mMask.render_background || mMask.render_sprites)
+        {
+            if (mVramAddr.fine_y < 7)
+            {
+                mVramAddr.fine_y++;
+            }
+            else
+            {
+                mVramAddr.fine_y = 0;
+
+                if (mVramAddr.coarse_y == 29)
+                {
+                    mVramAddr.coarse_y = 0;
+                    mVramAddr.nametable_y = ~mVramAddr.nametable_y;
+                }
+                else if (mVramAddr.coarse_y == 31)
+                {
+                    mVramAddr.coarse_y = 0;
+                }
+                else
+                {
+                    mVramAddr.coarse_y++;
+                }
+            }
+        }
+    };
+
+    auto TransferAddressX = [&]()
+    {
+        if (mMask.render_background || mMask.render_sprites)
+        {
+            mVramAddr.nametable_x = mTramAddr.nametable_x;
+            mVramAddr.coarse_x = mTramAddr.coarse_x;
+        }
+    };
+
+    auto TransferAddressY = [&]()
+    {
+        if (mMask.render_background || mMask.render_sprites)
+        {
+            mVramAddr.fine_y = mTramAddr.fine_y;
+            mVramAddr.nametable_y = mTramAddr.nametable_y;
+            mVramAddr.coarse_y = mTramAddr.coarse_y;
+        }
+    };
+
+    auto LoadBackgroundShifters = [&]()
+    {
+        mBackgroundShifterPatternLo = (mBackgroundShifterPatternLo & 0xFF00) | mBackgroundNextTileLSB;
+        mBackgroundShifterPatternHi = (mBackgroundShifterPatternHi & 0xFF00) | mBackgroundNextTileMSB;
+
+        mBackgroundShifterAttribLo = (mBackgroundShifterAttribLo & 0xFF00) | ((mBackgroundNextTileAttrib & 0b01) ? 0xFF : 0x00);
+        mBackgroundShifterAttribHi = (mBackgroundShifterAttribHi & 0xFF00) | ((mBackgroundNextTileAttrib & 0b10) ? 0xFF : 0x00);
+    };
+
+    auto UpdateShifters = [&]()
+    {
+        if (mMask.render_background)
+        {
+            mBackgroundShifterPatternLo <<= 1;
+            mBackgroundShifterPatternHi <<= 1;
+            mBackgroundShifterAttribLo <<= 1;
+            mBackgroundShifterAttribHi <<= 1;
+        }
+    };
+
+    if ((-1 <= mScanline) && (mScanline < 240))
+    {
+        if ((mScanline == 0) && (mCycle == 0))
+        {
+            mCycle = 1;
+        }
+
+        if ((mScanline == -1) && (mCycle == 1))
+        {
+            mStatus.vertical_blank = 0;
+        }
+
+        if (((2 <= mCycle) && (mCycle < 258)) || ((321 <= mCycle) && (mCycle < 338)))
+        {
+            UpdateShifters();
+
+            // pre-loading the PPU with the info it needs to render the next eight pixels
+            switch ((mCycle - 1) % 8)
+            {
+            case 0:
+                LoadBackgroundShifters();
+                mBackgroundNextTileID = ReadPPU(0x2000 | (mVramAddr.reg & 0x0FFF));
+                break;
+
+            case 2:
+                mBackgroundNextTileAttrib = ReadPPU(0x23C0 | (mVramAddr.nametable_y << 11) | (mVramAddr.nametable_x << 10) | ((mVramAddr.coarse_y >> 2) << 3) | (mVramAddr.coarse_x >> 2));
+                if (mVramAddr.coarse_y & 0x02)
+                {
+                    mBackgroundNextTileAttrib >>= 4;
+                }
+                if (mVramAddr.coarse_x & 0x02)
+                {
+                    mBackgroundNextTileAttrib >>= 2;
+                }
+                mBackgroundNextTileAttrib &= 0x03;
+                break;
+
+            case 4:
+                mBackgroundNextTileLSB = ReadPPU((mControl.pattern_background << 12) + (uint16_t(mBackgroundNextTileID) << 4) + mVramAddr.fine_y + 0);
+                break;
+
+            case 6:
+                mBackgroundNextTileMSB = ReadPPU((mControl.pattern_background << 12) + (uint16_t(mBackgroundNextTileID) << 4) + mVramAddr.fine_y + 8);
+                break;
+
+            case 7:
+                IncrementScrollX();
+                break;
+            }
+        }
+
+        if (mCycle == 256)
+        {
+            IncrementScrollY();
+        }
+
+        if (mCycle == 257)
+        {
+            LoadBackgroundShifters();
+            TransferAddressX();
+        }
+
+        // superfluous reads of tile id at end of scanline
+
+        if ((mCycle == 338) || (mCycle == 340))
+        {
+            mBackgroundNextTileID = ReadPPU(0x2000 | (mVramAddr.reg & 0x0FFF));
+        }
+
+        if ((mScanline == -1) && ((280 <= mCycle) && (mCycle < 305)))
+        {
+            TransferAddressY();
+        }
     }
 
     if ((mScanline == 241) && (mCycle == 1))
@@ -321,12 +491,29 @@ void PPU::Clock()
         }
     }
 
-    // // temporary noise
-    // mSpriteScreen.SetPixel(mCycle - 1, mScanline, mPaletteScreen[(rand() % 2) ? 0x3F : 0x30]);
+    // composite and draw
+
+    uint8_t background_pixel = 0x00;
+    uint8_t background_pallete = 0x00;
+
+    if (mMask.render_background)
+    {
+        uint16_t bit_mux = 0x8000 >> mFineX;
+
+        uint8_t background_pixel_0 = (mBackgroundShifterPatternLo & bit_mux) > 0;
+        uint8_t background_pixel_1 = (mBackgroundShifterPatternHi & bit_mux) > 0;
+        background_pixel = (background_pixel_1 << 1) | background_pixel_0;
+
+        uint8_t background_pallete_0 = (mBackgroundShifterAttribLo & bit_mux) > 0;
+        uint8_t background_pallete_1 = (mBackgroundShifterAttribHi & bit_mux) > 0;
+        background_pallete = (background_pallete_1 << 1) | background_pallete_0;
+    }
+
+    mSpriteScreen.SetPixel(mCycle - 1, mScanline, GetColourFromPaletteRAM(background_pallete, background_pixel));
 
     mCycle++;
 
-    if (mCycle >= 314)
+    if (mCycle >= 341)
     {
         mCycle = 0;
         mScanline++;
@@ -378,5 +565,5 @@ olc::Sprite &PPU::GetPatternTable(uint8_t i, uint8_t palette)
 
 const olc::Pixel &PPU::GetColourFromPaletteRAM(uint8_t palette, uint8_t pixel) const
 {
-    return mPaletteScreen[ReadPPU(0x3F00 + (palette * 4) + pixel)];
+    return mPaletteScreen[ReadPPU(0x3F00 + (palette * 4) + pixel) & 0x3F];
 }
