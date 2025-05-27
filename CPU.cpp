@@ -668,6 +668,11 @@ uint8_t CPU::Fetch()
 	return mFetch;
 }
 
+uint8_t CPU::ADC()
+{
+	return AddValue(0x0000);
+}
+
 uint8_t CPU::AND()
 {
 	// bitwise logic AND between the accumulator register and the fetched data
@@ -698,14 +703,14 @@ uint8_t CPU::ASL()
 	return 0;
 }
 
-uint8_t CPU::BCS()
-{
-	return BranchIf(GetFlag(FLAGS::C) != 0x00);
-}
-
 uint8_t CPU::BCC()
 {
 	return BranchIf(GetFlag(FLAGS::C) == 0x00);
+}
+
+uint8_t CPU::BCS()
+{
+	return BranchIf(GetFlag(FLAGS::C) != 0x00);
 }
 
 uint8_t CPU::BEQ()
@@ -979,9 +984,88 @@ uint8_t CPU::ORA()
 	return 1;
 }
 
-uint8_t CPU::ADC()
+uint8_t CPU::PHA()
 {
-	return AddValue(0x0000);
+	PushValue(mA);
+	return 0;
+}
+
+uint8_t CPU::PHP()
+{
+	PushValue(mSR | FLAGS::B | FLAGS::U);
+	SetFlag(FLAGS::B, false);
+	SetFlag(FLAGS::U, false);
+	return 0;
+}
+
+uint8_t CPU::PLA()
+{
+	mA = PopValue();
+	SetFlag(FLAGS::Z, mA == 0x00);
+	SetFlag(FLAGS::N, (mA & 0x80) != 0x00);
+	return 0;
+}
+
+uint8_t CPU::PLP()
+{
+	mSR = PopValue();
+	SetFlag(FLAGS::U, true);
+	return 0;
+}
+
+uint8_t CPU::ROL()
+{
+	Fetch();
+	uint8_t temp = (mFetch << 1) | GetFlag(FLAGS::C);
+	SetFlag(FLAGS::C, mFetch & 0x80);
+	SetFlag(FLAGS::Z, temp == 0x00);
+	SetFlag(FLAGS::N, temp & 0x80);
+	if (mLookup[mOpcode].addrmode == &CPU::IMP)
+	{
+		mA = temp;
+	}
+	else
+	{
+		Write(mAddrABS, temp);
+	}
+	return 0;
+}
+
+uint8_t CPU::ROR()
+{
+	Fetch();
+	uint8_t temp = (mFetch >> 1) | (GetFlag(FLAGS::C) << 7);
+	SetFlag(FLAGS::C, mFetch & 0x01);
+	SetFlag(FLAGS::Z, temp == 0x00);
+	SetFlag(FLAGS::N, temp & 0x80);
+	if (mLookup[mOpcode].addrmode == &CPU::IMP)
+	{
+		mA = temp;
+	}
+	else
+	{
+		Write(mAddrABS, temp);
+	}
+	return 0;
+}
+
+uint8_t CPU::RTI()
+{
+	mSR = PopValue();
+	mSR &= ~FLAGS::B;
+
+	mPC = uint16_t(PopValue());
+	mPC |= uint16_t(PopValue()) << 8;
+
+	return 0;
+}
+
+uint8_t CPU::RTS()
+{
+	mPC = uint16_t(PopValue());
+	mPC |= uint16_t(PopValue()) << 8;
+	mPC++;
+	return 0;
 }
 
 uint8_t CPU::SBC()
@@ -1068,90 +1152,6 @@ uint8_t CPU::TYA()
 	mA = mY;
 	SetFlag(FLAGS::Z, mA == 0x00);
 	SetFlag(FLAGS::N, mA & 0x80);
-	return 0;
-}
-
-uint8_t CPU::PHA()
-{
-	PushValue(mA);
-	return 0;
-}
-
-uint8_t CPU::PHP()
-{
-	PushValue(mSR | FLAGS::B | FLAGS::U);
-	SetFlag(FLAGS::B, false);
-	SetFlag(FLAGS::U, false);
-	return 0;
-}
-
-uint8_t CPU::PLA()
-{
-	mA = PopValue();
-	SetFlag(FLAGS::Z, mA == 0x00);
-	SetFlag(FLAGS::N, (mA & 0x80) != 0x00);
-	return 0;
-}
-
-uint8_t CPU::PLP()
-{
-	mSR = PopValue();
-	SetFlag(FLAGS::U, true);
-	return 0;
-}
-
-uint8_t CPU::ROL()
-{
-	Fetch();
-	uint8_t temp = (mFetch << 1) | GetFlag(FLAGS::C);
-	SetFlag(FLAGS::C, mFetch & 0x80);
-	SetFlag(FLAGS::Z, temp == 0x00);
-	SetFlag(FLAGS::N, temp & 0x80);
-	if (mLookup[mOpcode].addrmode == &CPU::IMP)
-	{
-		mA = temp;
-	}
-	else
-	{
-		Write(mAddrABS, temp);
-	}
-	return 0;
-}
-
-uint8_t CPU::ROR()
-{
-	Fetch();
-	uint8_t temp = (mFetch >> 1) | (GetFlag(FLAGS::C) << 7);
-	SetFlag(FLAGS::C, mFetch & 0x01);
-	SetFlag(FLAGS::Z, temp == 0x00);
-	SetFlag(FLAGS::N, temp & 0x80);
-	if (mLookup[mOpcode].addrmode == &CPU::IMP)
-	{
-		mA = temp;
-	}
-	else
-	{
-		Write(mAddrABS, temp);
-	}
-	return 0;
-}
-
-uint8_t CPU::RTI()
-{
-	mSR = PopValue();
-	mSR &= ~FLAGS::B;
-
-	mPC = uint16_t(PopValue());
-	mPC |= uint16_t(PopValue()) << 8;
-
-	return 0;
-}
-
-uint8_t CPU::RTS()
-{
-	mPC = uint16_t(PopValue());
-	mPC |= uint16_t(PopValue()) << 8;
-	mPC++;
 	return 0;
 }
 
