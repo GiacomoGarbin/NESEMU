@@ -786,7 +786,7 @@ uint8_t CPU::CLI()
 
 uint8_t CPU::CLV()
 {
-    UNIMPLEMENTED();
+    SetFlag(FLAGS::O, false);
     return 0;
 }
 
@@ -953,7 +953,20 @@ uint8_t CPU::LSR()
 
 uint8_t CPU::NOP()
 {
-    UNIMPLEMENTED();
+    switch (mOpcode)
+    {
+    case 0x1C:
+    case 0x3C:
+    case 0x5C:
+    case 0x7C:
+    case 0xDC:
+    case 0xFC:
+        return 1;
+
+    default:
+        break;
+    }
+
     return 0;
 }
 
