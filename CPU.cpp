@@ -1210,12 +1210,14 @@ void CPU::IRQ()
 	if (GetFlag(FLAGS::I) == 0x00)
 	{
 		CallInterrupt(0xFFFE);
+		mCycles = 7;
 	}
 }
 
 void CPU::NMI()
 {
 	CallInterrupt(0xFFFA);
+	mCycles = 8;
 }
 
 // Helpers
@@ -1273,8 +1275,8 @@ uint8_t CPU::PopValue()
 
 void CPU::CallInterrupt(const uint16_t routine)
 {
-	PushValue((mPC >> 8) & 0xFF);
-	PushValue(mPC & 0xFF);
+	PushValue((mPC >> 8) & 0x00FF);
+	PushValue(mPC & 0x00FF);
 
 	SetFlag(FLAGS::B, false);
 	SetFlag(FLAGS::U, true);
@@ -1282,6 +1284,4 @@ void CPU::CallInterrupt(const uint16_t routine)
 	PushValue(mSR);
 
 	JumpAddrABS(routine);
-
-	mCycles = 7;
 }
