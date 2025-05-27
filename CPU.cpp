@@ -500,7 +500,7 @@ uint8_t CPU::ZPY()
 	// the address supplied with the instruction had the content of the Y register added to it
 	// useful for iterating regions of memory, such as arrays
 
-	mAddrABS = (Read(mPC) + mX);
+	mAddrABS = (Read(mPC) + mY);
 	mPC++;
 	mAddrABS &= 0x00FF;
 	return 0;
