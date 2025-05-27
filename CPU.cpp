@@ -1053,6 +1053,7 @@ uint8_t CPU::RTI()
 {
 	mSR = PopValue();
 	mSR &= ~FLAGS::B;
+	mSR &= ~FLAGS::U;
 
 	mPC = uint16_t(PopValue());
 	mPC |= uint16_t(PopValue()) << 8;
@@ -1168,6 +1169,9 @@ void CPU::Clock()
 	if (mCycles == 0)
 	{
 		mOpcode = Read(mPC);
+
+		SetFlag(FLAGS::U, true);
+
 		mPC++;
 
 		// get starting number of cycles
@@ -1177,6 +1181,8 @@ void CPU::Clock()
 		uint8_t additional_cycle_2 = (this->*mLookup[mOpcode].operate)();
 
 		mCycles += (additional_cycle_1 & additional_cycle_2);
+
+		SetFlag(FLAGS::U, true);
 	}
 
 	mCycles--;
@@ -1188,7 +1194,7 @@ void CPU::Reset()
 	mX = 0x00;
 	mY = 0x00;
 	mSP = 0xFD;
-	mSR = 0x00;
+	mSR = 0x00 | FLAGS::U;
 
 	JumpAddrABS(0xFFFC);
 
@@ -1271,6 +1277,7 @@ void CPU::CallInterrupt(const uint16_t routine)
 	PushValue(mPC & 0xFF);
 
 	SetFlag(FLAGS::B, false);
+	SetFlag(FLAGS::U, true);
 	SetFlag(FLAGS::I, true);
 	PushValue(mSR);
 
