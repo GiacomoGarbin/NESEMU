@@ -780,7 +780,7 @@ uint8_t CPU::CLD()
 
 uint8_t CPU::CLI()
 {
-	UNIMPLEMENTED();
+	SetFlag(FLAGS::I, false);
 	return 0;
 }
 
@@ -997,7 +997,7 @@ uint8_t CPU::SEC()
 
 uint8_t CPU::SED()
 {
-	UNIMPLEMENTED();
+	SetFlag(FLAGS::D, true);
 	return 0;
 }
 
@@ -1043,7 +1043,9 @@ uint8_t CPU::TAY()
 
 uint8_t CPU::TSX()
 {
-	UNIMPLEMENTED();
+	mX = mSP;
+	SetFlag(FLAGS::Z, mX == 0x00);
+	SetFlag(FLAGS::N, mX & 0x80);
 	return 0;
 }
 

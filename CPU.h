@@ -75,9 +75,9 @@ public:
     uint8_t BVC(); // branch if overflow
     uint8_t BVS(); // branch if not overflow
     uint8_t CLC(); // clear the carry bit
-    uint8_t CLD(); // clear the decinal mode bit
-    uint8_t CLI();
-    uint8_t CLV();
+    uint8_t CLD(); // clear the decimal mode bit
+    uint8_t CLI(); // clear the interrupt flag
+    uint8_t CLV(); // clear the overflow bit
     uint8_t CMP(); // compare the accumulator register
     uint8_t CPX(); // compare the X register
     uint8_t CPY(); // compare the Y register
@@ -94,7 +94,7 @@ public:
     uint8_t LDX(); // load the X register
     uint8_t LDY(); // load the Y register
     uint8_t LSR(); // logical shift right: 0 -> [76543210] -> C
-    uint8_t NOP();
+    uint8_t NOP(); // no operation
     uint8_t ORA(); // bitwise OR: A = A | memory
     uint8_t PHA(); // push the accumulator register to the stack
     uint8_t PHP(); // push the status register to the stack
@@ -106,14 +106,14 @@ public:
     uint8_t RTS(); // return from subroutine
     uint8_t SBC(); // subtraction with carry bit
     uint8_t SEC(); // set carry flag
-    uint8_t SED();
+    uint8_t SED(); // set decimal mode flag
     uint8_t SEI(); // set interrupt flag
-    uint8_t STA();
+    uint8_t STA(); // store the accumulator register in memory
     uint8_t STX(); // store the X register in memory
     uint8_t STY(); // store the Y register in memory
     uint8_t TAX(); // transfer the accumulator register to the X register
     uint8_t TAY(); // transfer the accumulator register to the Y register
-    uint8_t TSX();
+    uint8_t TSX(); // transfer the stack pointer to the X register
     uint8_t TXA(); // transfer the X register to the accumulator register
     uint8_t TXS(); // transfer the X register to the stack pointer
     uint8_t TYA(); // transfer the Y register to the accumulator register
