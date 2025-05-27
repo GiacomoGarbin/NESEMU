@@ -823,10 +823,10 @@ uint8_t CPU::CPY()
 uint8_t CPU::DEC()
 {
     Fetch();
-    uint8_t temp = mFetch - 1;
-    Write(mAddrABS, temp);
-    SetFlag(FLAGS::Z, temp == 0x00);
-    SetFlag(FLAGS::N, temp & 0x80);
+    uint16_t temp = mFetch - 1;
+    Write(mAddrABS, temp & 0x00FF);
+    SetFlag(FLAGS::Z, (temp & 0x00FF) == 0x0000);
+    SetFlag(FLAGS::N, temp & 0x0080);
     return 0;
 }
 
