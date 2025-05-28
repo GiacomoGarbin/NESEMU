@@ -723,8 +723,8 @@ uint8_t CPU::BIT()
 	Fetch();
 	uint16_t temp = mA & mFetch;
 	SetFlag(FLAGS::Z, (temp & 0x00FF) == 0x0000);
-	SetFlag(FLAGS::N, temp & 0x0080);
-	SetFlag(FLAGS::O, temp & 0x0040);
+	SetFlag(FLAGS::N, mFetch & (1 << 7));
+	SetFlag(FLAGS::O, mFetch & (1 << 6));
 	return 0;
 }
 
