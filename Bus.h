@@ -21,14 +21,16 @@ public:
     CPURAM mCPURAM;
     PPU mPPU;
     std::shared_ptr<Cartridge> mCartridge;
+    uint8_t mController[2]; // instantaneous state of the controllers
 
     void WriteCPU(uint16_t addr, uint8_t data);
     uint8_t ReadCPU(uint16_t addr, bool bReadOnly = false);
 
-    void InsertCartridge(const std::shared_ptr<Cartridge>& cartridge);
+    void InsertCartridge(const std::shared_ptr<Cartridge> &cartridge);
     void Reset();
     void Clock(); // perform one system tick of the emulation
 
 private:
     uint32_t mSystemClockCounter = 0;
+    uint8_t mControllerState[2]; // snapshot of the inputs
 };

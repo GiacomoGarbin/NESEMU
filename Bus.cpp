@@ -30,6 +30,10 @@ void Bus::WriteCPU(uint16_t addr, uint8_t data)
     {
         mPPU.WriteCPU(addr & 0x0007, data);
     }
+    else if ((0x4016 <= addr) && (addr <= 0x4017))
+    {
+        mControllerState[addr & 0x0001] = mController[addr & 0x0001];
+    }
 }
 
 uint8_t Bus::ReadCPU(uint16_t addr, bool bReadOnly)
@@ -46,6 +50,12 @@ uint8_t Bus::ReadCPU(uint16_t addr, bool bReadOnly)
     else if ((0x2000 <= addr) && (addr <= 0x3FFF))
     {
         return mPPU.ReadCPU(addr & 0x0007, bReadOnly);
+    }
+    else if ((0x4016 <= addr) && (addr <= 0x4017))
+    {
+        // data = (mControllerState[addr & 0x0001] & 0x80) >> 7;
+        data = (mControllerState[addr & 0x0001] & 0x80) > 0;
+        mControllerState[addr & 0x0001] <<= 1;
     }
 
     return data;
