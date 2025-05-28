@@ -1248,7 +1248,7 @@ uint8_t CPU::AddValue(const uint16_t mask)
 	SetFlag(FLAGS::C, (temp & 0x0100) != 0x0000);
 	SetFlag(FLAGS::Z, (temp & 0x00FF) == 0x0000);
 	SetFlag(FLAGS::N, (temp & 0x0080) != 0x0000);
-	SetFlag(FLAGS::O, ((~(uint16_t(mA) ^ uint16_t(mFetch)) & (uint16_t(mA) ^ temp)) & 0x0080) != 0x0000);
+	SetFlag(FLAGS::O, (temp ^ uint16_t(mA)) & (temp ^ value) & 0x0080);
 	mA = uint8_t(temp & 0x00FF);
 	return 1;
 }
