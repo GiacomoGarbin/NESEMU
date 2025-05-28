@@ -802,7 +802,7 @@ uint8_t CPU::CMP()
 	SetFlag(FLAGS::C, mA >= mFetch);
 	SetFlag(FLAGS::Z, (temp & 0x00FF) == 0x0000);
 	SetFlag(FLAGS::N, temp & 0x0080);
-	return 0;
+	return 1;
 }
 
 uint8_t CPU::CPX()
