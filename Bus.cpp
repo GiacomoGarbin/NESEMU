@@ -1,6 +1,7 @@
 #include "Bus.h"
 
 Bus::Bus()
+    : mSystemClockCounter(0), mControllerState{}, mPageDMA(0), mAddrDMA(0), mDataDMA(0), mIsTransferDMA(false), mIsDummyDMA(false)
 {
     // clear the RAM
 
@@ -29,6 +30,12 @@ void Bus::WriteCPU(uint16_t addr, uint8_t data)
     else if ((0x2000 <= addr) && (addr <= 0x3FFF))
     {
         mPPU.WriteCPU(addr & 0x0007, data);
+    }
+    else if (addr == 0x4014)
+    {
+        mPageDMA = data;
+        mAddrDMA = 0;
+        mIsTransferDMA = true;
     }
     else if ((0x4016 <= addr) && (addr <= 0x4017))
     {
@@ -79,7 +86,38 @@ void Bus::Clock()
 
     if ((mSystemClockCounter % 3) == 0)
     {
-        mCPU.Clock();
+        if (mIsTransferDMA)
+        {
+            if (mIsDummyDMA)
+            {
+                if ((mSystemClockCounter % 2) == 1)
+                {
+                    mIsDummyDMA = false;
+                }
+            }
+            else
+            {
+                if ((mSystemClockCounter % 2) == 0)
+                {
+                    mDataDMA = ReadCPU((mPageDMA << 8) | mAddrDMA);
+                }
+                else
+                {
+                    mPPU.mPtrOAM[mAddrDMA] = mDataDMA;
+                    mAddrDMA++;
+
+                    if (mAddrDMA == 0)
+                    {
+                        mIsTransferDMA = false;
+                        mIsDummyDMA = true;
+                    }
+                }
+            }
+        }
+        else
+        {
+            mCPU.Clock();
+        }
     }
 
     if (mPPU.mNMI)

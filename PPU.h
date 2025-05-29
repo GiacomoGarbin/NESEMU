@@ -130,4 +130,22 @@ private:
     uint16_t mBackgroundShifterPatternHi;
     uint16_t mBackgroundShifterAttribLo;
     uint16_t mBackgroundShifterAttribHi;
+
+private:
+    struct ObjectAttributeEntry
+    {
+        // the order of the structure members is what the NES expects
+        uint8_t y;         // y position of the sprite
+        uint8_t id;        // ID of the tile from pattern memory
+        uint8_t attribute; // flags defining how the sprite should be rendered
+        uint8_t x;         // x position of the sprite
+    };
+
+    ObjectAttributeEntry mOAM[64];
+
+public:
+    uint8_t *mPtrOAM;
+
+private:
+    uint8_t mAddrOAM;
 };

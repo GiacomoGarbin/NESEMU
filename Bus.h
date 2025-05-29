@@ -31,6 +31,14 @@ public:
     void Clock(); // perform one system tick of the emulation
 
 private:
-    uint32_t mSystemClockCounter = 0;
+    uint32_t mSystemClockCounter;
+
     uint8_t mControllerState[2]; // snapshot of the inputs
+
+    uint8_t mPageDMA;
+    uint8_t mAddrDMA;
+    uint8_t mDataDMA;
+
+    bool mIsTransferDMA;
+    bool mIsDummyDMA;
 };

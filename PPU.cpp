@@ -1,7 +1,7 @@
 #include "PPU.h"
 
 PPU::PPU()
-    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mNMI(false), mScanline(0), mCycle(0), mAddressLatch(0), mDataBufferPPU(0), mVramAddr{.reg = 0}, mTramAddr{.reg = 0}, mFineX(0), mBackgroundNextTileID(0), mBackgroundNextTileAttrib(0), mBackgroundNextTileLSB(0), mBackgroundNextTileMSB(0), mBackgroundShifterPatternLo(0), mBackgroundShifterPatternHi(0), mBackgroundShifterAttribLo(0), mBackgroundShifterAttribHi(0)
+    : mSpriteScreen(256, 240), mSpriteNameTable{{256, 240}, {256, 240}}, mSpritePatternTable{{128, 128}, {128, 128}}, mIsFrameComplete(false), mNMI(false), mScanline(0), mCycle(0), mAddressLatch(0), mDataBufferPPU(0), mVramAddr{.reg = 0}, mTramAddr{.reg = 0}, mFineX(0), mBackgroundNextTileID(0), mBackgroundNextTileAttrib(0), mBackgroundNextTileLSB(0), mBackgroundNextTileMSB(0), mBackgroundShifterPatternLo(0), mBackgroundShifterPatternHi(0), mBackgroundShifterAttribLo(0), mBackgroundShifterAttribHi(0), mPtrOAM(reinterpret_cast<uint8_t *>(mOAM)), mAddrOAM(0)
 {
     // https://www.nesdev.org/wiki/PPU_palettes#2C02
 
@@ -96,9 +96,11 @@ void PPU::WriteCPU(uint16_t addr, uint8_t data)
         break;
 
     case 0x0003: // OAM addr
+        mAddrOAM = data;
         break;
 
     case 0x0004: // OAM data
+        mPtrOAM[mAddrOAM] = data;
         break;
 
     case 0x0005: // scroll
@@ -163,6 +165,7 @@ uint8_t PPU::ReadCPU(uint16_t addr, bool bReadOnly)
         break;
 
     case 0x0004: // OAM data
+        data = mPtrOAM[mAddrOAM];
         break;
 
     case 0x0005: // scroll

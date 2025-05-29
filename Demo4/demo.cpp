@@ -19,7 +19,7 @@ public:
 
     bool OnUserCreate() override
     {
-        mCartridge = std::make_shared<Cartridge>("../ROMS/nestest.nes");
+        mCartridge = std::make_shared<Cartridge>("../ROMS/donkey kong.nes");
 
         mNES.InsertCartridge(mCartridge);
 
@@ -110,7 +110,15 @@ public:
         }
 
         DrawCPU(516, 2);
-        DrawCode(516, 72, 26);
+        // DrawCode(516, 72, 26);
+
+        // for each index
+        for (int i = 0; i < 26; ++i)
+        {
+            const uint8_t *pOAM = mNES.mPPU.mPtrOAM + i * 4;
+            const std::string str = CPU::ToHex(i, 2) + ": (" + std::to_string(pOAM[3]) + "," + std::to_string(pOAM[0]) + ") ID: " + CPU::ToHex(pOAM[1], 2) + " AT: " + CPU::ToHex(pOAM[2], 2);
+            DrawString(516, 72 + i * 10, str);
+        }
 
         const int swatch_size = 6;
 
