@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: clang++ build active file",
+			"command": "/usr/bin/clang++",
+			"args": [
+				"-arch",
+				"arm64",
+				"-std=c++17",
+				"-mmacosx-version-min=10.15",
+				"-Wall",
+				"-I/opt/homebrew/include",
+				"-L/opt/homebrew/lib",
+				"-framework",
+				"OpenGL",
+				"-framework",
+				"GLUT",
+				"-framework",
+				"Carbon",
+				"-lpng",
+				"-g",
+				"Bus.cpp",
+				"CPU.cpp",
+				"${file}",
+				"-o",
+				"${fileDirname}/${fileBasenameNoExtension}"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: /usr/bin/clang++"
+		}
+	]
+}

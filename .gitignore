@@ -65,7 +65,7 @@ Temporary Items
 
 
 # Visual Studio Code
-.vscode
+# .vscode
 *.dSYM
 
 
